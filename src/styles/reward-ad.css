@@ -1,0 +1,31 @@
+.reward-ad-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 16px;
+}
+
+.reward-ad-description {
+  font-size: 15px;
+  color: var(--tds-color-grey500, #6B7684);
+  text-align: center;
+}
+
+.reward-ad-button {
+  width: 100%;
+  max-width: 320px;
+  padding: 14px 20px;
+  background-color: var(--tds-color-blue500, #3182F6);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reward-ad-button--loading {
+  background-color: var(--tds-color-grey300, #B0C4DE);
+  cursor: default;
+}

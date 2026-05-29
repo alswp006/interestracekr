@@ -1,0 +1,240 @@
+TDS 핵심 규칙 — 실제 @toss/tds-mobile@2.3.0 .d.ts에서 검증됨 (2026-04 갱신)
+위반 시 tsc 에러 발생. 이 파일의 API가 다른 문서와 충돌하면 이 파일이 우선.
+
+📘 새 페이지 작성 시: tds-patterns.md를 먼저 확인 (실제 출시 미니앱 기반 8개 골든 패턴).
+   - PageShell, Top+우측액션, StatusPanel, 라디오 다이얼로그,
+     인터랙티브 그리드(햅틱), FixedBottomCTA, Portal 오버레이, 버튼 스택
+   가까운 패턴이 있으면 새로 만들지 말고 그것을 변형하세요.
+
+=== 스타일 규칙 ===
+1. style={{}}에 margin/padding/fontSize/fontWeight 사용 금지 → TDS 컴포넌트 내장 스타일 사용
+2. HEX 색상 하드코딩 금지 → var(--tds-color-*) 또는 var(--adaptive*) CSS 변수 사용
+3. 커스텀 CSS는 flex/grid 레이아웃에만 허용 (외부 컨테이너 padding/gap OK)
+
+=== Provider 셋업 (main.tsx) ===
+import { TDSMobileAITProvider } from '@toss/tds-mobile-ait';
+<TDSMobileAITProvider>{children}</TDSMobileAITProvider>
+- 내부적으로 TDSMobileProvider + GlobalCSSVariables + SafeAreaInsets 통합
+- userAgent 자동 파싱, 브랜드 컬러는 granite.config.ts에서 자동
+- ⚠️ colorPreference: 'light' 강제 (다크모드 비활성). 다크모드 필요 시 TDSMobileProvider 직접 사용
+- CSS import 불필요 (emotion Global로 자동 주입)
+
+=== 컴포넌트별 필수 API (Required props 반드시 포함) ===
+
+Top (상단 내비게이션):
+  - title: ReactNode (REQUIRED!)
+  - 사용법: <Top title={<Top.TitleParagraph>제목</Top.TitleParagraph>} />
+  - ❌ 잘못된 사용: <Top><Top.TitleParagraph>제목</Top.TitleParagraph></Top>
+  - 선택: right?, upper?, lower?, subtitleTop?, subtitleBottom?
+  - right에 IconButton 자주 사용: right={<IconButton aria-label="..." name="..." onClick={...} />}
+
+Button:
+  - variant: 'fill' | 'weak' (ONLY 이 2개)
+  - ❌ 잘못된 값: 'primary', 'secondary', 'ghost', 'outline' — 존재하지 않음
+  - 선택: color?, size?, disabled?, onClick
+
+TextField:
+  - variant: 'box' | 'line' | 'big' | 'hero' (REQUIRED!)
+  - ❌ variant 없이 사용하면 tsc 에러
+  - 선택: label?, help? (NOT helperText), hasError?, suffix?, inputMode?, value, onChange
+
+Tab:
+  - onChange: (index: number, key?: string | number) => void (REQUIRED!)
+  - Tab.Item: selected: boolean (REQUIRED!), ❌ value prop 없음
+  - 사용법: <Tab onChange={(i) => setIdx(i)}><Tab.Item selected={idx===0}>탭1</Tab.Item></Tab>
+
+ListRow:
+  - ❌ padding prop 없음 — 존재하지 않는 prop
+  - ❌ texts prop 없음 — contents prop 사용 (이전 문서 오류 정정)
+  - 핵심 props: contents?, left?, right?, border?, onClick?
+  - 사용법:
+    <ListRow
+      contents={<ListRow.Texts type="2RowTypeA" top="제목" bottom="설명" />}
+      left={<Checkbox.Line checked={x} onChange={...} />}
+      right={<Switch checked={y} onChange={...} />}
+    />
+
+  ListRow.Texts (type prop REQUIRED — 21개 변형 존재):
+    1줄형: type="1RowTypeA" | "1RowTypeB" | "1RowTypeC" + top
+    2줄형: type="2RowTypeA" | "2RowTypeB" | ... | "2RowTypeF" + top + bottom
+    3줄형: type="3RowTypeA" | "3RowTypeB" | ... | "3RowTypeF" + top + middle + bottom
+    오른쪽 정렬형: type="Right1RowTypeA~E" | "Right2RowTypeA~E"
+      (string literal 값에는 "Texts" 접두어 없음. d.ts의 interface명만 TextsRight*)
+    가장 흔한 사용:
+      "1RowTypeA" — 단순 텍스트 1줄
+      "2RowTypeA" — 제목 + 설명 (기본)
+      "Right2RowTypeA" — 양쪽 정렬 (왼쪽 라벨 + 오른쪽 값)
+
+Switch (Toggle 컴포넌트는 존재하지 않음):
+  - checked?: boolean, onChange: (e) => void
+  - 선택: disabled?, name?, hasTouchEffect?
+  - 사용법: <Switch checked={on} onChange={() => setOn(!on)} />
+
+Checkbox (namespace 패턴):
+  - Checkbox.Circle — 원형 체크박스
+  - Checkbox.Line — 라인 스타일 (가장 흔함)
+  - Checkbox.LineTransparent — 투명 라인
+  - props: checked, onChange (e: ChangeEvent<HTMLInputElement>) => void
+  - 사용법: <Checkbox.Line checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+  - ❌ <Checkbox checked /> 단독 사용 불가 — namespace 멤버만 export
+
+IconButton (Asset 통합):
+  - aria-label: string (REQUIRED — 접근성)
+  - name 또는 src 중 하나 필수 (children 받지 않음)
+  - 선택: color?, bgColor?, variant?, iconSize?, onClick
+  - 사용법: <IconButton aria-label="홈으로" name="iconHomeRegular" onClick={...} />
+  - ❌ 잘못된 사용: <IconButton><Asset.Icon name="..." /></IconButton> — children 받지 않음
+
+Asset (namespace — 콘텐츠 일러스트레이션):
+  - Asset.Icon, Asset.Image, Asset.Lottie, Asset.Text, Asset.Video
+  - Asset.ContentIcon, Asset.ContentImage
+  - 일반적으로 IconButton 안에 넣지 말 것 (위 IconButton 참조)
+  - 카드/리스트 안 시각 요소로 사용
+
+AlertDialog (open/onClose 직접 관리):
+  - open?: boolean, title?: ReactNode, description?: ReactNode
+  - alertButton: ReactNode (AlertDialog.AlertButton 사용)
+  - onClose: () => void (REQUIRED for dismissal)
+  - 닫기 버튼 텍스트는 반드시 "닫기" (NOT "취소" — 토스 UX)
+
+useDialog (대부분의 경우 권장 — overlay declarative API):
+  - 반환: { close, openAlert, openConfirm, openAsyncConfirm }
+  - openAlert({ title, alertButton, description?, closeOnDimmerClick? }): Promise<void>
+  - openConfirm({ title, confirmButton, cancelButton, ... }): Promise<boolean>
+  - alertButton/confirmButton은 string 또는 ReactElement (AlertDialog.AlertButton)
+  - 사용법:
+    const dialog = useDialog();
+    await dialog.openAlert({ title: '완료', alertButton: '닫기' });
+    const ok = await dialog.openConfirm({
+      title: '삭제하시겠어요?',
+      confirmButton: '삭제',
+      cancelButton: '취소',
+    });
+
+Toast (open/position 직접 관리):
+  - open: boolean (REQUIRED!)
+  - position: 'top' | 'bottom' (REQUIRED!)
+  - onClose?: () => void
+
+useToast (대부분의 경우 권장):
+  - 반환: { openToast }
+  - openToast(message: string, options?): void
+  - 사용법:
+    const toast = useToast();
+    toast.openToast('저장되었습니다');
+
+BottomSheet:
+  - open: boolean, onClose: () => void
+  - title?: ReactNode, children: ReactNode
+
+Spacing:
+  - size: string | number (REQUIRED!)
+  - ❌ size 없이 <Spacing /> 사용하면 에러
+  - direction?: 'vertical' | 'horizontal' (default vertical)
+
+Paragraph.Text (Typography):
+  - typography: string (t1~t7, st1~st13)
+  - ❌ 'heading1', 'body1', 'caption1' 등은 존재하지 않음
+  - 일반 가이드 (정확한 크기는 디자인에 의존):
+    t1~t3 — 큰 제목
+    t4~t5 — 본문
+    t6~t7 — 작은 텍스트
+    st1~st13 — 시맨틱 토큰 (제목/본문/라벨/캡션 등)
+
+Badge (3개 prop 필수):
+  - size: 'large' | 'medium' | 'small' | 'xsmall' (REQUIRED!)
+  - variant: 'fill' | 'weak' (REQUIRED!)
+  - color: 'blue' | 'teal' | 'green' | 'red' | 'yellow' | 'elephant' (REQUIRED!)
+  - 사용법: <Badge size="medium" variant="fill" color="blue">5</Badge>
+
+Border: 존재함 (구분선)
+
+Skeleton (로딩 자리표시자):
+  - <Skeleton /> — 기본 형태
+  - 크기는 부모 div의 inline style(width/height)로 지정
+  - 데이터 패칭 중 표시 → 데이터 도착 시 실제 컴포넌트로 교체
+
+TextArea (여러 줄 입력):
+  - <TextArea value onChange placeholder maxLength? /> — 일반 form 패턴
+  - TextField와 별개. 길이 제한이 있을 때 maxLength prop 사용
+  - 자동 높이는 SDK가 처리
+
+TextButton (텍스트 전용 버튼):
+  - <TextButton onClick>...</TextButton> — 인라인 보조 액션용
+  - Button과 달리 시각적 강조 없음 (링크 스타일)
+
+SearchField (검색 입력):
+  - <SearchField value onChange placeholder />
+  - 좌측 돋보기 아이콘 + 우측 clear 버튼이 내장
+
+SegmentedControl (세그먼트 토글):
+  - 2~5개 옵션 중 하나 선택 (Tab과 다른 UX — 콘텐츠 전환 X)
+  - <SegmentedControl value onChange options={[{ label, value }]} />
+  - 필터/정렬에 자주 사용
+
+ProgressBar (진행률):
+  - <ProgressBar value /> — 0~1 또는 0~100 (라이브러리 기본값 확인)
+  - 단계 표시는 ProgressStep / ProgressStepper
+
+Loader / FullScreenLoader (로딩 인디케이터):
+  - <Loader /> — 인라인 회전 인디케이터
+  - <FullScreenLoader open /> — 화면 전체 덮개 모달 로딩
+  - 짧은 작업(<1초)은 Skeleton, 긴 작업(>1초)은 Loader 권장
+
+CTAButton / BottomCTA / FixedBottomCTA (주요 CTA 패턴):
+  - CTAButton: 일반 폼 하단 1차 액션 버튼
+  - BottomCTA: 페이지 자연스러운 흐름의 하단 CTA
+  - FixedBottomCTA: position fixed 하단 고정 CTA (safe-area 자동 처리)
+  - 결제/제출/확인 등 화면 1차 액션은 이 셋 중 하나 사용 권장 (Button보다 Toss-native)
+
+Tooltip / FullTooltip (툴팁):
+  - <Tooltip content="설명">...</Tooltip>
+  - FullTooltip은 화면 전체 안내용
+
+useHaptic (TDS 햅틱):
+  - 반환: { triggerHaptic }
+  - triggerHaptic('tickWeak' | 'success' | ...) — 토스 가이드라인 따름
+  - @apps-in-toss/web-framework의 generateHapticFeedback와 별개 — TDS 컴포넌트 내부 일관성에 사용
+
+useAppearance (라이트/다크 감지):
+  - 반환: 'light' | 'dark'
+  - --adaptive* CSS 변수가 자동으로 처리하므로 일반적으로 직접 호출 불필요
+  - 다크모드별 다른 SVG/이미지 표시할 때만 사용
+
+useBottomSheet / useToast / useDialog:
+  - declarative overlay API — 위 useDialog/useToast 참조
+  - useBottomSheet도 동일 패턴: { open } 호출로 BottomSheet 열기
+
+usePlatform / useViewport / useSafeAreaBottomHeight:
+  - usePlatform: { isIOS, isAndroid, ... } 디바이스 분기
+  - useViewport: { width, height } 뷰포트 크기 (반응형)
+  - useSafeAreaBottomHeight: number — 하단 safe area 픽셀 (수동 padding 계산 시)
+
+=== CSS 변수 (TDSMobileAITProvider 적용 시 자동 노출) ===
+- 색상: var(--adaptiveBlue500), var(--adaptiveGrey700) 등 (light/dark 자동 분기)
+- 시맨틱: var(--adaptiveBackground), var(--adaptiveLayeredBackground) 등
+- Safe area: var(--toss-safe-area-top), var(--toss-safe-area-bottom)
+- 토큰: var(--tToastBackground), var(--tBlueBadgeColor) 등 (theme tokens)
+
+=== 환각 방지: "모르면 지어내지 말고 확인하라" ===
+- 이 파일에 없는 컴포넌트나 prop을 사용하려면 → tds-reference.txt를 먼저 확인
+- tds-reference.txt에도 없으면 → 그 컴포넌트/prop은 존재하지 않는다고 판단
+- 존재하지 않는 prop을 추측해서 사용하면 tsc 에러 발생 → 절대 금지
+- TDS로 구현이 불확실한 UI → 기본 HTML(<div>, <span>) + var(--adaptive*) CSS 변수로 대체
+- 대체 시에도 Tailwind 클래스 금지, inline style의 flex/grid 레이아웃만 허용
+- IconButton에 children 넣지 말 것 — name 또는 src prop 사용
+- ListRow에 texts prop 사용하지 말 것 — contents prop 사용
+
+=== import 패턴 ===
+import {
+  Top, Button, TextField, TextArea, TextButton, Tab, ListRow,
+  Switch, Checkbox, IconButton, Asset,
+  AlertDialog, BottomSheet, Toast,
+  Spacing, Paragraph, Badge, Border, Skeleton,
+  SearchField, SegmentedControl, ProgressBar,
+  Loader, FullScreenLoader, Tooltip,
+  CTAButton, BottomCTA, FixedBottomCTA,
+  useDialog, useToast, useBottomSheet,
+  useHaptic, useAppearance, usePlatform, useViewport,
+  useSafeAreaBottomHeight,
+} from '@toss/tds-mobile';

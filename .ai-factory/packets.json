@@ -1,0 +1,631 @@
+[
+  {
+    "id": "0001",
+    "title": "데이터 모델 타입 + RouteState 계약 정의",
+    "epic": "Epic 1 (Data/Storage)",
+    "task": {
+      "description": "SPEC에 정의된 PolicyBlockAcknowledgement, LocalStorageHealth를 리터럴 타입까지 100% 동일하게 타입으로만 선언하고, 라우팅에서 location.state 캐스팅에 쓰는 RouteState 계약을 고정해 이후 모든 레이어가 이 타입만 import하도록 만든다.",
+      "acceptance_criteria": [
+        "src/lib/types.ts에 PolicyBlockAcknowledgement, LocalStorageHealth, RouteState 3개 export가 존재해야 한다.",
+        "LocalStorageHealth[\"lastError\"] 타입이 \"LS_UNAVAILABLE\" | \"LS_QUOTA_EXCEEDED\" | \"LS_PARSE_ERROR\" 유니온이어야 한다.",
+        "RouteState가 `{\"/\": undefined; \"*\": unknown}` 형태로 정확히 선언돼야 한다.",
+        "런타임 코드(함수/상수 값 계산)가 없어야 하며 TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F1-AC1",
+      "F1-AC2",
+      "F1-AC3",
+      "F1-AC4",
+      "F1-AC5",
+      "F1-AC6",
+      "F1-AC7",
+      "F2-AC1",
+      "F3-AC1",
+      "F5-AC2"
+    ],
+    "files": [
+      "src/lib/types.ts"
+    ],
+    "definition_of_done": [
+      "타입 정의만 포함(0 runtime)",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [],
+    "db_schema": "interface PolicyBlockAcknowledgement → localStorage key: 'policyBlock.ack.v1'\ninterface LocalStorageHealth → localStorage key: 'app.localStorageHealth.v1'\nRouteState: { '/': undefined; '*': unknown }",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": ""
+  },
+  {
+    "id": "0002",
+    "title": "localStorage 안전 래퍼(safeLocalStorage)",
+    "epic": "Epic 1 (Data/Storage)",
+    "task": {
+      "description": "SecurityError 등 localStorage 접근 자체가 throw 가능한 환경을 대비해 절대 throw하지 않는 safeGetItem/safeSetItem/safeRemoveItem 래퍼를 만든다. QuotaExceededError를 감지해 에러 코드를 분기하며, src 내 console.error 추가 없이 에러를 값으로만 반환한다.",
+      "acceptance_criteria": [
+        "safeGetItem/safeSetItem/safeRemoveItem는 어떤 예외도 함수 밖으로 throw하면 FAIL이다.",
+        "QuotaExceededError 환경에서 safeSetItem은 `{ ok:false, error:\"LS_QUOTA_EXCEEDED\" }`를 반환해야 한다.",
+        "localStorage 접근 불가(SecurityError 등) 시 3개 함수 모두 `{ ok:false, error:\"LS_UNAVAILABLE\" }`를 반환해야 한다.",
+        "src/**에 console.error 호출 코드가 포함되면 FAIL이며 TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F1-AC6",
+      "F5-AC2"
+    ],
+    "files": [
+      "src/lib/storage/safeLocalStorage.ts"
+    ],
+    "definition_of_done": [
+      "모든 코드 경로에서 throw 0건",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0001"
+    ],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": ""
+  },
+  {
+    "id": "0003",
+    "title": "PolicyBlockAcknowledgement 스토리지 CRUD",
+    "epic": "Epic 1 (Data/Storage)",
+    "task": {
+      "description": "policyBlock.ack.v1의 읽기/파싱/저장/삭제를 담당하는 storage 헬퍼를 구현한다. 파싱 실패를 LS_PARSE_ERROR로 반환해 상위가 손상 데이터로 처리할 수 있게 하고, 저장 시 createdAt 유지/재생성 규칙과 ISO 시간(new Date().toISOString())만 사용하는 규칙을 정확히 지킨다.",
+      "acceptance_criteria": [
+        "readPolicyAck()는 키가 없으면 `{ ok:true, value:null }`, 값이 \"NOT_JSON\"이면 `{ ok:false, error:\"LS_PARSE_ERROR\" }`를 반환해야 한다.",
+        "writeAcknowledgedPolicyAck(prev) 반환 value는 id/createdAt/updatedAt/hasAcknowledged/violationCategory/acknowledgedAt 6개 필드를 모두 포함해야 한다(누락 시 FAIL).",
+        "prev가 정상 객체일 때만 createdAt을 유지하고, prev가 null 또는 \"CORRUPTED\"면 createdAt을 새 ISO로 생성해야 한다.",
+        "코드베이스(src/**)에 \"Temporal\" 문자열이 존재하면 FAIL이며 TS 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F1-AC3",
+      "F1-AC5",
+      "F1-AC6",
+      "F5-AC3"
+    ],
+    "files": [
+      "src/lib/storage/policyAckStorage.ts"
+    ],
+    "definition_of_done": [
+      "SPEC 필드/리터럴 타입 고정",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0001",
+      "0002"
+    ],
+    "db_schema": "PolicyBlockAcknowledgement → localStorage key: 'policyBlock.ack.v1'",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": ""
+  },
+  {
+    "id": "0004",
+    "title": "LocalStorageHealth 스토리지 CRUD + 무한 루프 방지",
+    "epic": "Epic 1 (Data/Storage)",
+    "task": {
+      "description": "app.localStorageHealth.v1의 read/write를 구현한다. 핵심은 health 저장 자체가 Quota로 실패해도 예외를 흡수하고 재시도를 절대 하지 않도록(함수 1회 호출당 setItem 1회) 보장하는 것이다. createdAt 유지 규칙과 checkedAt/updatedAt 갱신을 ISO로 고정한다.",
+      "acceptance_criteria": [
+        "writeLocalStorageHealth() 1회 호출 동안 safeSetItem(\"app.localStorageHealth.v1\", ...) 호출이 2회 이상이면 FAIL이다.",
+        "safeSetItem이 Quota로 실패하면 `{ ok:false, error:\"LS_QUOTA_EXCEEDED\" }` 반환 후 추가 write 시도가 0회여야 한다.",
+        "기존 health가 정상 파싱될 때만 createdAt 유지, 그 외(null/파싱 실패/미존재)는 createdAt을 새 ISO로 생성해야 한다.",
+        "TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F1-AC5",
+      "F1-AC6",
+      "F1-AC7",
+      "F5-AC4"
+    ],
+    "files": [
+      "src/lib/storage/localStorageHealthStorage.ts"
+    ],
+    "definition_of_done": [
+      "setItem 1회 규칙 준수",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0001",
+      "0002"
+    ],
+    "db_schema": "LocalStorageHealth → localStorage key: 'app.localStorageHealth.v1'",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": ""
+  },
+  {
+    "id": "0005",
+    "title": "PolicyBlock 상태 관리(Context + Hook)",
+    "epic": "Epic 1 (Data/Storage)",
+    "task": {
+      "description": "PolicyBlockHome 화면이 필요한 로딩/ack 상태/저장소 오류 노출/액션(확인 저장, 초기화)을 제공하는 Context+Hook을 만든다. 첫 페인트에서 health를 동기적으로 읽어 showStorageError 초기값을 결정해 AC-7(즉시 오류 문구) 요구를 만족시킨다.",
+      "acceptance_criteria": [
+        "PolicyBlockProvider와 usePolicyBlock()이 export되어야 하며, usePolicyBlock이 isLoading/ack/showStorageError/acknowledge/resetAck를 제공해야 한다.",
+        "초기 렌더에서 readLocalStorageHealth 결과가 lastError=\"LS_UNAVAILABLE\" && isAvailable=false이면 showStorageError 초기값이 true여야 한다.",
+        "readLocalStorageHealth가 LS_UNAVAILABLE로 실패해도 showStorageError 초기값이 true여야 한다(false면 FAIL).",
+        "readPolicyAck가 LS_PARSE_ERROR면 ack는 null로 두되, 이후 acknowledge()에서 writeAcknowledgedPolicyAck(\"CORRUPTED\") 경로를 타야 한다.",
+        "src/**에 console.error가 추가되면 FAIL이며 TS 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F1-AC4",
+      "F1-AC5",
+      "F1-AC6",
+      "F1-AC7",
+      "F5-AC2",
+      "F6-AC3",
+      "F6-AC4"
+    ],
+    "files": [
+      "src/lib/state/policyBlockStore.tsx"
+    ],
+    "definition_of_done": [
+      "Provider/Hook 사용 예외 없이 동작",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0003",
+      "0004"
+    ],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": ""
+  },
+  {
+    "id": "0006",
+    "title": "UI 컴포넌트: 차단 상태 패널(StatusPanel)",
+    "epic": "Epic 2 (Pages/UI)",
+    "task": {
+      "description": "PolicyBlockHome 상단의 회색 안내 패널을 재사용 컴포넌트로 분리한다. 핵심 문구와 hasAcknowledged 상태에 따른 \"이미 확인했어요\" 표시(Chip)를 포함하고, TDS Spacing만으로 간격을 조절하며 HEX 색상 하드코딩 없이 TDS 토큰(var(--tds-color-* ))만 사용한다.",
+      "acceptance_criteria": [
+        "컴포넌트가 Paragraph.Text로 \"금융상품 금리 비교/순위/추천은 오픈 정책상 등록이 불가합니다.\" 문구를 렌더해야 한다(문구 불일치 시 FAIL).",
+        "hasAcknowledged=true prop일 때 렌더 트리에 \"이미 확인했어요\" 문자열이 포함돼야 한다(없으면 FAIL).",
+        "간격 조절은 Spacing만 사용해야 하며, TextField를 사용하면 FAIL이다.",
+        "TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F1-AC1",
+      "F1-AC3"
+    ],
+    "files": [
+      "src/components/PolicyBlockStatusPanel.tsx"
+    ],
+    "definition_of_done": [
+      "TDS 컴포넌트만 사용",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0001"
+    ],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": "TDS Paragraph.Text, Spacing, Chip 사용. 회색 배경은 `div`에 `backgroundColor: 'var(--tds-color-grey50)'`, `borderRadius: 16`, `padding: 20`만 사용(여백 커스텀은 padding만). 문구 2줄(제목/설명) + hasAcknowledged면 Chip 표시."
+  },
+  {
+    "id": "0007",
+    "title": "UI 컴포넌트: 저장소 오류 문구(Notice)",
+    "epic": "Epic 2 (Pages/UI)",
+    "task": {
+      "description": "showStorageError가 true일 때 PolicyBlockHome에서 노출할 고정 오류 문구 영역을 컴포넌트로 분리한다. 문구는 SPEC 고정 문자열을 그대로 사용하고, TDS Paragraph.Text + Spacing만 사용해 화면 하단에 자연스럽게 이어지게 한다.",
+      "acceptance_criteria": [
+        "Paragraph.Text로 정확히 \"저장소 접근 오류로 확인 상태를 저장할 수 없어요.\" 문자열을 렌더해야 한다(불일치 시 FAIL).",
+        "컴포넌트 내부에 링크/외부 이동 요소(a 태그 등)가 존재하면 FAIL이다.",
+        "TDS Spacing만으로 간격을 두고 TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F1-AC5",
+      "F1-AC7"
+    ],
+    "files": [
+      "src/components/StorageErrorNotice.tsx"
+    ],
+    "definition_of_done": [
+      "고정 문구 정확히 일치",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0001"
+    ],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": "TDS Paragraph.Text(typography=\"st9\", color=\"secondary\"), Spacing(size={12}). show/hide는 부모에서 제어."
+  },
+  {
+    "id": "0008",
+    "title": "UI 컴포넌트: 정책 상세 AlertDialog",
+    "epic": "Epic 2 (Pages/UI)",
+    "task": {
+      "description": "\"자세히 보기\" 탭으로 열리는 AlertDialog를 컴포넌트로 분리한다. 제목/본문에 SPEC 고정 문구를 포함하고, 닫기 버튼 라벨은 반드시 \"닫기\"로 한다(취소 금지). 열림/닫힘은 open prop과 onClose 콜백으로 제어한다.",
+      "acceptance_criteria": [
+        "AlertDialog 제목에 \"서비스 오픈 정책 위반\"이 포함돼야 한다(없으면 FAIL).",
+        "AlertDialog 본문(description)에 \"위반 카테고리: 5. 금융 상품 중개/판매/광고\" 문자열이 포함돼야 한다(없으면 FAIL).",
+        "닫기 버튼 라벨이 \"닫기\"가 아니면 FAIL이며, TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F1-AC2"
+    ],
+    "files": [
+      "src/components/PolicyViolationDialog.tsx"
+    ],
+    "definition_of_done": [
+      "문구/버튼 라벨 스펙 고정",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0001"
+    ],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": "TDS AlertDialog만 사용. props: open:boolean, onClose:()=>void. `alertButton`에 AlertDialog.AlertButton 사용, 라벨 \"닫기\"."
+  },
+  {
+    "id": "0009",
+    "title": "UI 컴포넌트: 로컬 데이터 초기화 BottomSheet",
+    "epic": "Epic 2 (Pages/UI)",
+    "task": {
+      "description": "\"로컬 데이터 초기화\" 진입 시 표시되는 BottomSheet를 컴포넌트로 분리한다. \"초기화하기\"(danger)와 \"닫기\"(weak) 버튼을 제공하고, 초기화 성공/실패 후 닫힘은 부모가 제어한다. 내부에서 TextField/외부 링크를 추가하지 않는다.",
+      "acceptance_criteria": [
+        "BottomSheet에 \"로컬 데이터를 초기화할까요?\" 문구가 Paragraph.Text로 렌더돼야 한다(불일치 시 FAIL).",
+        "\"초기화하기\" 버튼 1개와 \"닫기\" 버튼 1개가 존재해야 하며, 닫기 라벨이 \"닫기\"가 아니면 FAIL이다.",
+        "컴포넌트가 onReset/onClose 콜백을 props로 받아 클릭 시 각각 1회 호출해야 한다.",
+        "TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F6-AC1",
+      "F6-AC3",
+      "F6-AC4"
+    ],
+    "files": [
+      "src/components/ResetAckSheet.tsx"
+    ],
+    "definition_of_done": [
+      "BottomSheet 단독 렌더 가능",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0001"
+    ],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": "TDS BottomSheet, Paragraph.Text, Spacing, Button 사용. 위험 버튼: `Button variant=\"fill\" color=\"danger\" size=\"large\"` 라벨 \"초기화하기\". 닫기 버튼: `variant=\"weak\"` 라벨 \"닫기\"."
+  },
+  {
+    "id": "0010",
+    "title": "UI 컴포넌트: 배너 영역(AdSlotSection)",
+    "epic": "Epic 2 (Pages/UI)",
+    "task": {
+      "description": "정책 안내 본문과 버튼 영역 사이에 배너를 비침투적으로 배치하기 위한 래퍼 컴포넌트를 만든다. 템플릿 제공 AdSlot을 그대로 사용하고, 상하 간격은 Spacing으로만 제어한다. 광고 SDK 직접 호출/추가 구현은 하지 않는다.",
+      "acceptance_criteria": [
+        "컴포넌트가 프로젝트 로컬 AdSlot 컴포넌트를 1회 렌더해야 한다(누락 시 FAIL).",
+        "AdSlot 전후 간격을 Spacing(size={16})로만 구성해야 하며, Tailwind p-*/gap-* 클래스가 포함되면 FAIL이다.",
+        "TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F4-AC1"
+    ],
+    "files": [
+      "src/components/AdSlotSection.tsx"
+    ],
+    "definition_of_done": [
+      "AdSlot 래퍼로만 동작",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0001"
+    ],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": "TDS Spacing + 템플릿 제공 `<AdSlot />` 사용. 레이아웃: `<Spacing size={16} /><AdSlot /><Spacing size={16} />`."
+  },
+  {
+    "id": "0011",
+    "title": "페이지: PolicyBlockHome(`/`)",
+    "epic": "Epic 2 (Pages/UI)",
+    "task": {
+      "description": "정책 위반 안내/차단 랜딩 화면을 SPEC Blueprint 그대로 구성한다. 로딩 문구, 상세 AlertDialog, 확인 저장(토스트 2초), 이미 확인 상태 표시, 저장소 오류 문구, 로컬 데이터 초기화 BottomSheet, 배너 AdSlot을 포함한다. 회원가입/로그인 UI/문구/TextField는 절대 추가하지 않는다.",
+      "acceptance_criteria": [
+        "Top 타이틀이 정확히 \"서비스 이용 안내\"여야 하며, isLoading=true 동안 Paragraph.Text로 \"불러오는 중…\"가 렌더 트리에 존재해야 한다.",
+        "본문에 Paragraph.Text로 \"금융상품 금리 비교/순위/추천은 오픈 정책상 등록이 불가합니다.\" 문구가 포함돼야 한다.",
+        "\"자세히 보기\" 버튼 탭 시 AlertDialog가 열리고, 제목에 \"서비스 오픈 정책 위반\" + 본문에 \"위반 카테고리: 5. 금융 상품 중개/판매/광고\"가 포함돼야 한다.",
+        "\"확인\" 버튼 탭 후 navigate를 호출해 pathname이 /에서 바뀌면 FAIL이며, 성공 토스트 \"확인했어요\"는 duration 2000ms로 표시돼야 한다(불일치 시 FAIL).",
+        "ack?.hasAcknowledged===true이면 렌더 트리에 \"이미 확인했어요\" 문자열이 1개 이상 존재해야 하고, showStorageError=true이면 \"저장소 접근 오류로 확인 상태를 저장할 수 없어요.\" 문구가 표시돼야 한다."
+      ]
+    },
+    "covers": [
+      "F0-AC1",
+      "F1-AC1",
+      "F1-AC2",
+      "F1-AC3",
+      "F1-AC4",
+      "F1-AC5",
+      "F1-AC6",
+      "F1-AC7",
+      "F4-AC1",
+      "F6-AC1"
+    ],
+    "files": [
+      "src/pages/PolicyBlockHome.tsx"
+    ],
+    "definition_of_done": [
+      "Blueprint 레이아웃 준수",
+      "TextField 0개(앱 전체) 유지",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0001",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010"
+    ],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": "## Screen: PolicyBlockHome (`/`)\n\n### Pattern\nStatusPanel\n\n### TDS Components (whitelist)\nTop, Paragraph.Text, Spacing, Button, AlertDialog, Toast, Chip, ListRow, BottomSheet, AdSlot\n\n### Layout\n```tsx\n<Top title={<Top.TitleParagraph>서비스 이용 안내</Top.TitleParagraph>} />\n\n<Spacing size={16} />\n\n{/* 핵심 안내(차단 맥락) */}\n<div style={{ backgroundColor: 'var(--tds-color-grey50)', borderRadius: 16, padding: 20 }}>\n  <Paragraph.Text typography=\"t4\">현재 이 서비스는 기능을 제공하지 않아요</Paragraph.Text>\n  <Spacing size={8} />\n  <Paragraph.Text typography=\"st8\" color=\"secondary\">\n    금융상품 금리 비교/순위/추천은 오픈 정책상 등록이 불가합니다.\n  </Paragraph.Text>\n  <Spacing size={12} />\n  {hasAcknowledged && <Chip label=\"이미 확인했어요\" />}\n</div>\n\n<Spacing size={16} />\n\n{/* 저장소 오류 즉시 고지(health 또는 현재 세션 에러) */}\n{shouldShowStorageError && (\n  <>\n    <Paragraph.Text typography=\"st9\" color=\"secondary\">\n      저장소 접근 오류로 확인 상태를 저장할 수 없어요.\n    </Paragraph.Text>\n    <Spacing size={12} />\n  </>\n)}\n\n{/* 로컬 초기화 진입점(시트 오픈) */}\n<ListRow\n  contents={<ListRow.Texts type=\"2RowTypeA\" top=\"로컬 데이터 초기화\" bottom=\"확인 상태를 다시 초기화해요\" />}\n  onClick={() => setResetSheetOpen(true)}\n/>\n\n<Spacing size={16} />\n\n{/* 선택 배너(본문 하단과 버튼 영역 사이) */}\n<AdSlot />\n\n<Spacing size={16} />\n\n{/* 버튼 스택 */}\n<Button variant=\"weak\" size=\"large\" onClick={() => setPolicyDialogOpen(true)}>\n  자세히 보기\n</Button>\n<Spacing size={8} />\n<Button variant=\"fill\" size=\"large\" onClick={handleAcknowledge}>\n  확인\n</Button>\n\n{/* 자세히 보기 다이얼로그 */}\n<AlertDialog\n  open={isPolicyDialogOpen}\n  title=\"서비스 오픈 정책 위반\"\n  description=\"위반 카테고리: 5. 금융 상품 중개/판매/광고\"\n  alertButton={<AlertDialog.AlertButton onClick={() => setPolicyDialogOpen(false)}>닫기</AlertDialog.AlertButton>}\n  onClose={() => setPolicyDialogOpen(false)}\n/>\n\n{/* 초기화 BottomSheet (조건부 렌더링으로 open/close 제어) */}\n{isResetSheetOpen && (\n  <BottomSheet>\n    <Paragraph.Text typography=\"t6\">로컬 데이터를 초기화할까요?</Paragraph.Text>\n    <Spacing size={8} />\n    <Paragraph.Text typography=\"st9\" color=\"secondary\">이 작업은 이 기기에서만 적용돼요.</Paragraph.Text>\n    <Spacing size={16} />\n    <Button variant=\"fill\" color=\"danger\" size=\"large\" onClick={handleReset}>초기화하기</Button>\n    <Spacing size={8} />\n    <Button variant=\"weak\" size=\"large\" onClick={() => setResetSheetOpen(false)}>닫기</Button>\n  </BottomSheet>\n)}\n\n{/* 토스트(성공/실패 공통) */}\n<Toast open={toastOpen} position=\"bottom\" onClose={() => setToastOpen(false)} />\n```\n\n### States\n- Loading: `Paragraph.Text typography=\"st8\"`로 “불러오는 중…” 1줄 표시 + `Spacing size={16}` (버튼/리스트는 숨김)\n- Empty: (Pattern E)\n  - 중앙에 `Paragraph.Text typography=\"st6\" color=\"tertiary\"` “표시할 정보가 없어요”\n  - `Button variant=\"weak\"` “다시 불러오기”\n- Error:\n  - 본문 하단에 `Paragraph.Text typography=\"st9\" color=\"secondary\"` “인터넷 연결을 확인해주세요” + `Button variant=\"weak\"` “다시 시도하기”\n  - (저장소 에러는 스펙 문구로 고정) “저장소 접근 오류로 확인 상태를 저장할 수 없어요.”\n\n### Interactions\n- “자세히 보기” 탭: `AlertDialog` 오픈/클로즈 (햅틱 `tickWeak`)\n- “확인” 탭: ack 저장 시도 → 성공 시 `Toast`에 “확인했어요”(2초) (햅틱 `success`), 실패(Quota/Unavailable) 시 실패 토스트 노출\n- “로컬 데이터 초기화” ListRow 탭: `BottomSheet` 표시 (햅틱 `tickWeak`)\n- “초기화하기” 탭: 로컬 데이터 삭제 실행 후 시트 닫기 + 토스트 (햅틱 `tickStrong`)\n- 저장소 health에 `LS_UNAVAILABLE`가 기록돼 있으면: 첫 페인트 내에 저장소 오류 문구를 즉시 노출 (버튼 동작은 유지하되 저장 실패 토스트로 종료\n\nIMPORTANT: For each UI page packet, copy the matching screen's Blueprint into the \"ui_requirements\" field. The Blueprint is the coding agent's primary UI guide. Prioritize actual type definitions over Blueprint variable names if they conflict."
+  },
+  {
+    "id": "0012",
+    "title": "페이지: NotFoundRedirect(`*`)",
+    "epic": "Epic 2 (Pages/UI)",
+    "task": {
+      "description": "차단 상태에서 어떤 경로로 들어와도 정책 안내(`/`)로 통일하기 위해 catch-all 페이지를 만든다. 이 페이지는 UI를 거의 가지지 않고, react-router-dom Navigate로 즉시 `/`로 리다이렉트한다. location.state는 RouteState 계약상 unknown으로만 취급한다.",
+      "acceptance_criteria": [
+        "라우트가 `*`로 매칭되어 페이지가 렌더되면 Navigate를 통해 pathname이 `/`로 바뀌어야 한다(변경 없으면 FAIL).",
+        "외부 도메인 이동(window.open/window.location.*) 코드가 파일 내에 존재하면 FAIL이다.",
+        "TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F2-AC1",
+      "F2-AC2"
+    ],
+    "files": [
+      "src/pages/NotFoundRedirect.tsx"
+    ],
+    "definition_of_done": [
+      "catch-all 리다이렉트 동작 확인",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0001"
+    ],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": "TDS 컴포넌트 사용 없음(가능). react-router-dom의 `<Navigate to=\"/\" replace />` 사용. 화면에 TextField/버튼/링크 추가 금지."
+  },
+  {
+    "id": "0013",
+    "title": "외부 이동 차단 런타임 가드",
+    "epic": "Epic 3 (Integration)",
+    "task": {
+      "description": "검수 반려 방지를 위해 앱 런타임에서 외부 링크 클릭/폼 액션 등을 막는 가드를 제공한다. window.open/window.location.href를 호출하지 않고, document 클릭 이벤트를 캡처해 http(s) 외부 href의 기본 동작을 preventDefault 처리한다.",
+      "acceptance_criteria": [
+        "setupExternalNavigationBlocker() 호출 시 document에 capture 단계 click listener를 1개 등록해야 한다(미등록 시 FAIL).",
+        "클릭 타깃이 `<a href=\"https://...\">` 같은 외부 http(s) 링크일 때 event.preventDefault()가 호출되어야 한다.",
+        "구현 코드에 window.open, window.location.href/assign/replace 문자열이 포함되면 FAIL이다.",
+        "TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F3-AC1",
+      "F3-AC2"
+    ],
+    "files": [
+      "src/lib/externalNavigation.ts"
+    ],
+    "definition_of_done": [
+      "외부 href 클릭 시 이동 차단 확인",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": ""
+  },
+  {
+    "id": "0014",
+    "title": "ErrorBoundary(흰 화면 방지)",
+    "epic": "Epic 3 (Integration)",
+    "task": {
+      "description": "런타임 예외로 흰 화면이 되는 것을 막기 위해 ErrorBoundary 컴포넌트를 추가한다. 에러 발생 시에도 외부 이동/로그인 유도 없이, TDS Paragraph.Text와 Button으로 재시도(페이지 새로고침이 아닌 상태 리셋 콜백) UI를 제공한다. console.error 출력은 추가하지 않는다.",
+      "acceptance_criteria": [
+        "ErrorBoundary가 children 렌더 중 에러를 잡으면 fallback UI로 전환되어 흰 화면이 되지 않아야 한다.",
+        "fallback UI는 TDS Paragraph.Text 1개 이상과 TDS Button 1개 이상을 포함해야 한다.",
+        "src/** 내 console.error 호출이 추가되면 FAIL이며 TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F5-AC1",
+      "F5-AC2"
+    ],
+    "files": [
+      "src/lib/ErrorBoundary.tsx"
+    ],
+    "definition_of_done": [
+      "에러 throw 테스트 시 fallback 표시",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": "TDS Paragraph.Text(에러 안내), Spacing, Button(\"다시 시도하기\" 등)로 구성. 외부 링크/새 창/다운로드 유도 문구 금지."
+  },
+  {
+    "id": "0015",
+    "title": "프로덕션 품질 가드(console 출력 억제)",
+    "epic": "Epic 3 (Integration)",
+    "task": {
+      "description": "SPEC의 \"프로덕션 빌드에서 console.error 0건\" 요구를 지키기 위해, production 환경에서 console.error를 no-op으로 바꾸는 가드를 제공한다. 개발 환경에서는 동작을 바꾸지 않으며, 앱 시작 시 1회만 호출되도록 설계한다.",
+      "acceptance_criteria": [
+        "export된 initProductionGuards()를 호출하면 production 환경에서만 console.error가 함수로 유지되되 출력이 발생하지 않도록 대체되어야 한다.",
+        "development 환경(import.meta.env.DEV)에서는 console.error 참조가 변경되지 않아야 한다.",
+        "가드 구현에 console.error를 직접 호출하는 코드가 포함되면 FAIL이며 TS 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F5-AC2"
+    ],
+    "files": [
+      "src/lib/productionGuards.ts"
+    ],
+    "definition_of_done": [
+      "DEV/PROD 분기 확인",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": ""
+  },
+  {
+    "id": "0016",
+    "title": "UI 유틸: 하단 Safe Area 패딩 컴포넌트",
+    "epic": "Epic 2 (Pages/UI)",
+    "task": {
+      "description": "모바일(iOS 홈 인디케이터 등)에서 하단 버튼/토스트가 잘리지 않도록 safe-area-inset-bottom을 반영하는 레이아웃 컴포넌트를 제공한다. TDS 여백을 덮어쓰지 않고, 고정 영역이 아니라면 최소한의 paddingBottom만 적용한다.",
+      "acceptance_criteria": [
+        "컴포넌트가 `paddingBottom: 'calc(16px + env(safe-area-inset-bottom))'` 형태의 스타일을 적용해야 한다(누락 시 FAIL).",
+        "HEX 색상 하드코딩이 포함되면 FAIL이며 TypeScript 컴파일 에러 0건이어야 한다.",
+        "컴포넌트 내부에 TextField를 추가하면 FAIL이다."
+      ]
+    },
+    "covers": [
+      "F5-AC5"
+    ],
+    "files": [
+      "src/components/BottomSafeAreaPadding.tsx"
+    ],
+    "definition_of_done": [
+      "iOS 시뮬레이터에서 하단 여백 확인",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": "레이아웃 목적의 `div` + children. 스타일은 paddingBottom만. 간격은 페이지에서 TDS Spacing로 제어."
+  },
+  {
+    "id": "0017",
+    "title": "App 라우팅 연결 + Provider 조립(2개 라우트)",
+    "epic": "Epic 3 (Integration)",
+    "task": {
+      "description": "react-router-dom 라우팅을 고정하고 PolicyBlockProvider를 앱 최상단에 조립한다. 라우트는 정확히 2개(`/`, `*`)만 두고, `*`는 NotFoundRedirect로 연결한다. ErrorBoundary로 전체 라우트를 감싸 크래시를 UI로 흡수한다. main.tsx는 수정하지 않는다.",
+      "acceptance_criteria": [
+        "src/App.tsx에 Route 정의가 `/` → PolicyBlockHome, `*` → NotFoundRedirect로 2개만 존재해야 한다(추가 라우트 있으면 FAIL).",
+        "PolicyBlockProvider가 PolicyBlockHome 상위에서 렌더되도록 감싸져야 한다(누락 시 FAIL).",
+        "ErrorBoundary가 라우트 트리 상위를 감싸야 하며 TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F1-AC1",
+      "F2-AC1",
+      "F5-AC1"
+    ],
+    "files": [
+      "src/App.tsx"
+    ],
+    "definition_of_done": [
+      "라우트 2개만 동작 확인",
+      "main.tsx 변경 없음",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0005",
+      "0011",
+      "0012",
+      "0014"
+    ],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": "TDS UI 없음. react-router-dom Routes/Route 사용. Provider/Boundary 조립만 수행."
+  },
+  {
+    "id": "0018",
+    "title": "최종 폴리시: 외부 이동 가드 적용 + 프로덕션 가드 + 정적 점검 스크립트",
+    "epic": "Epic 3 (Integration)",
+    "task": {
+      "description": "앱 시작 시 외부 이동 차단 가드와 프로덕션 품질 가드를 1회 초기화하도록 App.tsx를 폴리시한다. 또한 scripts/static-check.mjs와 package.json 스크립트를 추가해 금지 토큰(외부 이동/로그인 SDK/금지 문구 등)을 정적 점검한다. 라우팅 변경은 하지 않는다.",
+      "acceptance_criteria": [
+        "App.tsx에서 setupExternalNavigationBlocker()와 initProductionGuards()가 마운트 시 1회 호출되도록 연결돼야 한다(누락 시 FAIL).",
+        "scripts/static-check.mjs가 src/**를 스캔해 `getIsTossLoginIntegratedService(` 토큰이 1건 이상이면 종료 코드 1로 실패해야 한다.",
+        "static-check가 src/**에서 \"회원가입\"/\"로그인\"/\"비밀번호\"/\"이메일\" 문자열을 발견하면 종료 코드 1로 실패해야 한다.",
+        "package.json에 `static-check` 스크립트가 추가되어 `node scripts/static-check.mjs`를 실행해야 하며 TypeScript 컴파일 에러 0건이어야 한다."
+      ]
+    },
+    "covers": [
+      "F0-AC1",
+      "F0-AC2",
+      "F3-AC1",
+      "F5-AC2"
+    ],
+    "files": [
+      "src/App.tsx",
+      "scripts/static-check.mjs",
+      "package.json"
+    ],
+    "definition_of_done": [
+      "정적 점검 스크립트 실행/실패 조건 확인",
+      "TS 컴파일 에러 0건"
+    ],
+    "depends_on": [
+      "0013",
+      "0015",
+      "0017"
+    ],
+    "db_schema": "",
+    "api_contract": "",
+    "dependencies": [],
+    "ui_requirements": ""
+  },
+  {
+    "id": "0019",
+    "title": "라우팅 와이어링 + Provider 연결 + 통합 폴리시",
+    "epic": "4",
+    "task": {
+      "description": "App.tsx에 모든 페이지(PolicyBlockHome.tsx, NotFoundRedirect.tsx) Route 연결, main.tsx 수정 금지(@AI:ANCHOR), 광고/결제 연동, 최종 UX 폴리시",
+      "acceptance_criteria": [
+        "App.tsx에 모든 페이지 Route가 정의되어 있다",
+        "모든 navigate() 대상에 Route가 존재한다",
+        "main.tsx의 TDSMobileAITProvider/BrowserRouter가 유지되어 있다",
+        "앱이 '/' 경로에서 정상 렌더링된다"
+      ]
+    },
+    "files": [
+      "src/App.tsx"
+    ],
+    "covers": [],
+    "definition_of_done": [
+      "typecheck pass",
+      "all routes accessible",
+      "no console errors"
+    ],
+    "depends_on": [
+      "0018"
+    ]
+  }
+]
