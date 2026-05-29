@@ -1,0 +1,14 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0019",
+  "title": "라우팅 와이어링 + Provider 연결 + 통합 폴리시",
+  "files": [
+    "src/App.tsx"
+  ],
+  "dependsOn": [
+    "0018"
+  ],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:06.217Z",
+  "status": "kit_ready"
+}

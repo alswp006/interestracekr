@@ -1,0 +1,12 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0015",
+  "title": "프로덕션 품질 가드(console 출력 억제)",
+  "files": [
+    "src/lib/productionGuards.ts"
+  ],
+  "dependsOn": [],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:05.596Z",
+  "status": "kit_ready"
+}

@@ -1,0 +1,14 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0009",
+  "title": "UI 컴포넌트: 로컬 데이터 초기화 BottomSheet",
+  "files": [
+    "src/components/ResetAckSheet.tsx"
+  ],
+  "dependsOn": [
+    "0001"
+  ],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:04.685Z",
+  "status": "kit_ready"
+}

@@ -1,0 +1,14 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0002",
+  "title": "localStorage 안전 래퍼(safeLocalStorage)",
+  "files": [
+    "src/lib/storage/safeLocalStorage.ts"
+  ],
+  "dependsOn": [
+    "0001"
+  ],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:03.008Z",
+  "status": "kit_ready"
+}

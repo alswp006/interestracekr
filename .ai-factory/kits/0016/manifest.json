@@ -1,0 +1,12 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0016",
+  "title": "UI 유틸: 하단 Safe Area 패딩 컴포넌트",
+  "files": [
+    "src/components/BottomSafeAreaPadding.tsx"
+  ],
+  "dependsOn": [],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:05.802Z",
+  "status": "kit_ready"
+}

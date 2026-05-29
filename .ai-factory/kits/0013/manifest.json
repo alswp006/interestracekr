@@ -1,0 +1,12 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0013",
+  "title": "외부 이동 차단 런타임 가드",
+  "files": [
+    "src/lib/externalNavigation.ts"
+  ],
+  "dependsOn": [],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:05.251Z",
+  "status": "kit_ready"
+}

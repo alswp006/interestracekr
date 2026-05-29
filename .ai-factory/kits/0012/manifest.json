@@ -1,0 +1,14 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0012",
+  "title": "페이지: NotFoundRedirect(`*`)",
+  "files": [
+    "src/pages/NotFoundRedirect.tsx"
+  ],
+  "dependsOn": [
+    "0001"
+  ],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:05.099Z",
+  "status": "kit_ready"
+}

@@ -1,0 +1,15 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0004",
+  "title": "LocalStorageHealth 스토리지 CRUD + 무한 루프 방지",
+  "files": [
+    "src/lib/storage/localStorageHealthStorage.ts"
+  ],
+  "dependsOn": [
+    "0001",
+    "0002"
+  ],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:03.272Z",
+  "status": "kit_ready"
+}

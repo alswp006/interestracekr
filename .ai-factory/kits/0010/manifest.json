@@ -1,0 +1,14 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0010",
+  "title": "UI 컴포넌트: 배너 영역(AdSlotSection)",
+  "files": [
+    "src/components/AdSlotSection.tsx"
+  ],
+  "dependsOn": [
+    "0001"
+  ],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:04.820Z",
+  "status": "kit_ready"
+}

@@ -1,0 +1,14 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0007",
+  "title": "UI 컴포넌트: 저장소 오류 문구(Notice)",
+  "files": [
+    "src/components/StorageErrorNotice.tsx"
+  ],
+  "dependsOn": [
+    "0001"
+  ],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:03.664Z",
+  "status": "kit_ready"
+}

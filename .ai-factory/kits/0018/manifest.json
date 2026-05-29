@@ -1,0 +1,18 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0018",
+  "title": "최종 폴리시: 외부 이동 가드 적용 + 프로덕션 가드 + 정적 점검 스크립트",
+  "files": [
+    "src/App.tsx",
+    "scripts/static-check.mjs",
+    "package.json"
+  ],
+  "dependsOn": [
+    "0013",
+    "0015",
+    "0017"
+  ],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:06.086Z",
+  "status": "kit_ready"
+}

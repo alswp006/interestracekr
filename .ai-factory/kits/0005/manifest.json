@@ -1,0 +1,15 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0005",
+  "title": "PolicyBlock 상태 관리(Context + Hook)",
+  "files": [
+    "src/lib/state/policyBlockStore.tsx"
+  ],
+  "dependsOn": [
+    "0003",
+    "0004"
+  ],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:03.408Z",
+  "status": "kit_ready"
+}

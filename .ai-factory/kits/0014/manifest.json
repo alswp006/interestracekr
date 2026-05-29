@@ -1,0 +1,12 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0014",
+  "title": "ErrorBoundary(흰 화면 방지)",
+  "files": [
+    "src/lib/ErrorBoundary.tsx"
+  ],
+  "dependsOn": [],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:05.417Z",
+  "status": "kit_ready"
+}

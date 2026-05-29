@@ -1,0 +1,15 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0003",
+  "title": "PolicyBlockAcknowledgement 스토리지 CRUD",
+  "files": [
+    "src/lib/storage/policyAckStorage.ts"
+  ],
+  "dependsOn": [
+    "0001",
+    "0002"
+  ],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:03.137Z",
+  "status": "kit_ready"
+}

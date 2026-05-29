@@ -1,0 +1,17 @@
+{
+  "projectId": "proj-interestracekr",
+  "packetId": "0017",
+  "title": "App 라우팅 연결 + Provider 조립(2개 라우트)",
+  "files": [
+    "src/App.tsx"
+  ],
+  "dependsOn": [
+    "0005",
+    "0011",
+    "0012",
+    "0014"
+  ],
+  "platform": "toss",
+  "createdAt": "2026-05-29T15:11:05.957Z",
+  "status": "kit_ready"
+}
